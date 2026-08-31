@@ -6,58 +6,90 @@ import android.net.Uri
 import java.io.File
 
 /**
- * Finds the files the server needs at runtime.
+ * Locates and prepares the files the server needs at runtime.
  *
- * The APK bundles some binaries (the Node runtime, ffmpeg, ffprobe) but we do
- * NOT bundle server.js itself — it's proprietary, so the user provides it by
- * picking a file. This class answers "where is everything?" so the spawn logic
- * can build the command.
+ * The APK bundles the runtime binaries (ffmpeg, ffprobe and the standalone Node
+ * 26 executable) as jniLibs, and the user supplies server.js itself by picking a
+ * file (it's proprietary, so it's never bundled). The Node executable — like
+ * ffmpeg/ffprobe — is a standalone PIE binary that the server process spawns via
+ * child_process.spawn; this class answers "where is everything?" and prepares the
+ * writable data dir + preload env the server needs.
  */
 class ServerLocator(private val context: Context) {
 
     private val filesDir: File = context.filesDir
 
-    /** Directory the bundled binaries were extracted to on first run. */
-    private val binDir: File = File(filesDir, "bin")
+    /** Node, ffmpeg and ffprobe are shipped as .so-named jniLibs so AGP reliably
+     *  extracts them to nativeLibraryDir with the exec bit at install time.
+     *  exec() (via spawn) ignores the filename extension, so the .so suffix is
+     *  harmless. */
+    private val nativeDir: File = File(context.applicationInfo.nativeLibraryDir)
 
-    private val bundledBinaries = listOf("stremio-runtime", "ffmpeg", "ffprobe")
+    fun nodeBinary(): File = File(nativeDir, "libnode.so")
 
-    /**
-     * Copy the bundled binaries out of the APK's assets into our private folder.
-     * Assets cannot be executed in place, so they must land in the filesystem.
-     */
-    fun extractBundledBinaries() {
-        binDir.mkdirs()
-        var success = true
-        for (name in bundledBinaries) {
-            if (File(binDir, name).isFile) continue
-            success = copyAsset(name, File(binDir, name)) && success
-        }
-        if (!success) throw IllegalStateException("Failed to extract bundled binaries")
-    }
-
-    private fun copyAsset(name: String, target: File): Boolean {
-        return try {
-            context.assets.open(name).use { input ->
-                target.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    fun nodeBinary(): File = File(binDir, "stremio-runtime")
-
-    fun ffmpegBinary(): File = File(binDir, "ffmpeg")
-
-    fun ffprobeBinary(): File = File(binDir, "ffprobe")
+    fun filesDir(): File = filesDir
 
     fun serverJs(): File = File(filesDir, "server.js")
 
     fun hasServerJs(): Boolean = serverJs().isFile
+
+    /**
+     * Ensure the server's writable data dir and, crucially, a persisted
+     * server-settings.json exist before the engine starts.
+     *
+     * Without a settings file the server falls back to cacheSize = 0 on Android
+     * (see server-desktop.js the cacheSize default), which puts the torrent engine
+     * into a tiny memory/circular-buffer mode that cannot keep up with the 4K
+     * re-seeks of live transcoding — the "buffering forever / no video" symptom.
+     * Seeding a real cacheSize makes the engine use the same disk cache as a
+     * desktop/Termux run. We only create the file if it's absent so we don't
+     * clobber anything the server (or a future settings UI) may write later.
+     */
+    fun prepareServerData() {
+        val cacheDir = File(filesDir, "stremio-cache")
+        cacheDir.mkdirs()
+
+        val settings = File(filesDir, "server-settings.json")
+        if (settings.isFile) return
+
+        val data = buildString {
+            append("{\n")
+            append("  \"cacheSize\": 2147483648,\n")
+            append("  \"cacheRoot\": \"${filesDir.absolutePath}\",\n")
+            append("  \"transcodeHardwareAccel\": false\n")
+            append("}\n")
+        }
+        settings.writeText(data)
+    }
+
+    /**
+     * A tiny preload script that sets the env vars server.js reads to locate the
+     * transcoders and its writable data dir. It's injected before the server runs
+     * via `node -r <preload> server.js`.
+     *
+     * The server resolves its app/data dir from APP_PATH. On Android
+     * process.platform === "android", so the desktop build skips its linux branch
+     * and would otherwise fall back to os.tmpdir()/stremio-server (a non-writable
+     * /tmp on Android). Pointing APP_PATH (and HOME, which some paths read
+     * directly) at our private filesDir fixes that.
+     *
+     * ffmpeg and ffprobe are standalone executables under nativeLibraryDir
+     * (libffmpeg.so / libffprobe.so). Setting FFMPEG_BIN/FFPROBE_BIN makes the
+     * server's child_process.spawn use them.
+     */
+    fun writePreload() {
+        val dataDir = filesDir.absolutePath
+        val ffmpegBin = File(nativeDir, "libffmpeg.so").absolutePath
+        val ffprobeBin = File(nativeDir, "libffprobe.so").absolutePath
+        val preload = File(filesDir, "preload.js")
+        val content = "process.env.APP_PATH = ${dataDir.jsonQuote()};\n" +
+            "process.env.HOME = ${dataDir.jsonQuote()};\n" +
+            "process.env.FFMPEG_BIN = ${ffmpegBin.jsonQuote()};\n" +
+            "process.env.FFPROBE_BIN = ${ffprobeBin.jsonQuote()};\n"
+        preload.writeText(content)
+    }
+
+    private fun String.jsonQuote(): String = "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
     /**
      * Fallback path: copy the user's picked file (a content URI) into our folder.
