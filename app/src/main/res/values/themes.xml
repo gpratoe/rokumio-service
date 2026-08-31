@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.RokuMioHost" parent="Theme.Material3.DayNight">
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+    </style>
+</resources>
