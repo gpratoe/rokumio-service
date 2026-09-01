@@ -3,7 +3,11 @@ package com.rokumio.host
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import org.json.JSONObject
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.InetAddress
+import java.net.URL
 
 /**
  * Locates and prepares the files the server needs at runtime.
@@ -109,4 +113,45 @@ class ServerLocator(private val context: Context) {
             false
         }
     }
+
+    /**
+     * GET /settings across the port range the main HTTP API can bind (11470,
+     * falling back to 11471-11474) and return the first baseUrl reported, or
+     * null if none answer within the range.
+     */
+    fun fetchBaseUrl(): String? {
+        for (port in serverPorts()) {
+            fetchBaseUrl(port)?.let { return it }
+        }
+        return null
+    }
+
+    /** GET /settings on a specific port and return its "baseUrl" field, or null. */
+    fun fetchBaseUrl(port: Int): String? {
+        val url = Uri.Builder()
+            .scheme("http")
+            .encodedAuthority("${InetAddress.getByName("localhost").hostAddress}:$port")
+            .path("/settings")
+            .build()
+            .toString()
+        return try {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 1000
+            conn.readTimeout = 1000
+            conn.requestMethod = "GET"
+            try {
+                if (conn.responseCode != 200) return null
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                val json = JSONObject(body)
+                json.optString("baseUrl").takeIf { it.isNotEmpty() }
+            } finally {
+                conn.disconnect()
+            }
+        } catch (e: Exception) {
+            android.util.Log.d("ServerLocator", "settings fetch failed: $e")
+            null
+        }
+    }
+
+    private fun serverPorts(): IntArray = intArrayOf(11470, 11471, 11472, 11473, 11474)
 }

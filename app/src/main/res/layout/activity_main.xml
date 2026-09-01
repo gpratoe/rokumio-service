@@ -8,8 +8,8 @@
 
     <TextView
         android:id="@+id/text_svstate"
-        android:layout_width="162dp"
-        android:layout_height="27dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:fontFamily="sans-serif-smallcaps"
         android:text="Stopped"
         android:textAlignment="center"
@@ -20,19 +20,31 @@
         android:typeface="normal"
         android:visibility="visible" />
 
+    <TextView
+        android:id="@+id/text_addr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/addr_placeholder"
+        android:textAlignment="center"
+        android:textColor="@color/design_default_color_secondary"
+        android:textSize="14sp" />
+
     <Button
         android:id="@+id/btn_toggle"
         style="@style/Widget.AppCompat.Button.Colored"
-        android:layout_width="172dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Run server" />
+        android:text="Run server"
+        android:textAlignment="center" />
 
     <Button
         android:id="@+id/btn_import"
         style="@style/Widget.AppCompat.Button.Colored"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Import server.js" />
+        android:text="Import server.js"
+        android:textAlignment="center" />
 
 </LinearLayout>

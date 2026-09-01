@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
-import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -18,6 +17,8 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
 
     private val locator by lazy { ServerLocator(this) }
+
+    private lateinit var textAddr: TextView
 
     // Lifts a persisted read grant so the file the user picked stays readable
     // across launches without needing a storage permission.
@@ -37,6 +38,7 @@ class MainActivity : AppCompatActivity() {
         val btnImport = findViewById<Button>(R.id.btn_import)
         val btnToggle = findViewById<Button>(R.id.btn_toggle)
         val textSvState = findViewById<TextView>(R.id.text_svstate)
+        textAddr = findViewById<TextView>(R.id.text_addr)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 ServerService.running.collect { running ->
@@ -45,7 +47,13 @@ class MainActivity : AppCompatActivity() {
                     textSvState.text =
                         if (running) "RUNNING" else "STOPPED"
                     if (running) textSvState.setTextColor(Color.GREEN) else textSvState.setTextColor(Color.RED)
-
+                }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ServerService.address.collect { address ->
+                    textAddr.text = address ?: getString(R.string.addr_placeholder)
                 }
             }
         }
@@ -61,7 +69,5 @@ class MainActivity : AppCompatActivity() {
                 startForegroundService(Intent(this, ServerService::class.java))
             }
         }
-
     }
-
 }

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RokuMio Host</string>
+    <string name="addr_placeholder">—</string>
+    <string name="sv_status_placeholder">STOPPED</string>
 </resources>

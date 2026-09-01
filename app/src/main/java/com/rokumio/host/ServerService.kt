@@ -40,6 +40,8 @@ class ServerService : Service() {
     companion object {
         private val _running = MutableStateFlow(false)
         val running = _running.asStateFlow()
+        private val _address = MutableStateFlow<String?>(null)
+        val address = _address.asStateFlow()
     }
     private val notifyId = 1
 
@@ -72,10 +74,12 @@ class ServerService : Service() {
 
                 val nodeLog = File(locator.filesDir(), "node.log")
                 nodeProcess = spawnNode(nodeLog)
+                _running.value = true
+                discoverAddress()
                 // Wait for the child to exit. When it does, the service has
                 // nothing left to do.
-                _running.value = true
                 nodeProcess?.waitFor()
+                _address.value = null
                 _running.value = false
                 stopSelf()
             } catch (e: Exception) {
@@ -111,10 +115,30 @@ class ServerService : Service() {
         return process
     }
 
+    private val fetchAttempts = 10
+    private val fetchDelayMs = 500L
+
+    /** Probe /settings until the server reports its baseUrl, then stop. */
+    private fun discoverAddress() {
+        for (attempt in 1..fetchAttempts) {
+            val baseUrl = locator.fetchBaseUrl()
+            if (baseUrl != null) {
+                _address.value = baseUrl
+                return
+            }
+            try {
+                Thread.sleep(fetchDelayMs)
+            } catch (e: InterruptedException) {
+                return
+            }
+        }
+    }
+
     override fun onDestroy() {
         // Kill the spawned Node process if still running.
         nodeProcess?.destroy()
         nodeProcess?.waitFor()
+        _address.value = null
         wakeLock?.let { if (it.isHeld) it.release() }
         super.onDestroy()
     }
