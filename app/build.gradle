@@ -14,10 +14,10 @@ android {
         versionCode 1
         versionName "0.1.0"
 
-        // ffmpeg/ffprobe are built for arm64-v8a only
-        // (scripts/build-ffmpeg-android.sh) and the standalone Node executable
-        // (node-android/bin/arm64-v8a/libnode.so) is arm64 only too. Packaging
-        // is therefore limited to arm64.
+        // The bundled native executables (ffmpeg, ffprobe via
+        // scripts/build-ffmpeg-android.sh, and the standalone Node executable
+        // via scripts/fetch-node-android.sh) are all staged for arm64-v8a only,
+        // under native/bin/arm64-v8a/. Packaging is therefore limited to arm64.
         ndk {
             abiFilters "arm64-v8a"
         }
@@ -32,24 +32,25 @@ android {
 
     packagingOptions {
         jniLibs {
-            // Extract native libs to a real on-disk file so their exec bit is
-            // applied at install time. ffmpeg/ffprobe are shipped as standalone
-            // .so-named jniLibs and spawned by the server; the standalone Node
-            // executable ships the same way. Executing them requires them to be
-            // physically present with the exec bit set, which only happens with
-            // legacy packaging (jniLibs are otherwise read from the APK).
+            // The bundled native executables (ffmpeg, ffprobe, node) are named
+            // lib*.so so AGP packages them into lib/<abi>/ and — with legacy
+            // packaging — extracts them to a real on-disk file with the exec bit
+            // at install time. They are then spawned as child processes by the
+            // server; they are NOT loaded as JNI/shared libraries, and executing
+            // them requires them to be physically present with the exec bit set
+            // (which only happens with legacy packaging).
             useLegacyPackaging = true
         }
     }
 
     sourceSets {
         main {
-            // Package the standalone Node 26 executable (per ABI) into the APK.
-            // It lives at <repo>/node-android/bin/<abi>/libnode.so — a PIE
-            // executable, not a linkable shared lib — staged by
-            // scripts/fetch-node-android.sh. ServerService spawns it the same
-            // way the server spawns ffmpeg/ffprobe.
-            jniLibs.srcDirs "jniLibs", "../node-android/bin"
+            // The standalone native executables (node, ffmpeg, ffprobe) are
+            // staged at <repo>/native/bin/<abi>/ by the fetch/build scripts.
+            // They are PIE executables, not linkable shared libs; ServerService
+            // spawns them. Pointing the jniLibs source set at native/bin feeds
+            // them through AGP's jniLibs packaging (see packagingOptions above).
+            jniLibs.srcDirs "../native/bin"
         }
     }
 

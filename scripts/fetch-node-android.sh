@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 #
-# Stages the standalone Node.js executable for Android (arm64) into ./node-android.
+# Stages the standalone Node.js executable for Android (arm64) into ./native/bin.
 #
 # We run stremio's server.js by spawning a self-contained Node executable the
 # same way the server spawns ffmpeg/ffprobe. The Node runtime is therefore NOT a
 # linkable/embedded libnode.so — it's a PIE executable (bin/node) that the app
-# ProcessBuilder.exec()s. We place it at <repo>/node-android/bin/<abi>/libnode.so
-# (a `.so` name so AGP reliably extracts it to nativeLibraryDir at install time).
+# ProcessBuilder.exec()s. We place it at <repo>/native/bin/<abi>/libnode.so
+# (a `.so` name so AGP reliably packages it into lib/<abi>/ and extracts it to
+# nativeLibraryDir at install time) alongside the ffmpeg/ffprobe executables
+# staged by scripts/build-ffmpeg-android.sh.
 #
 # The standalone Node binary is hand-provided (e.g. a release from
 # nodejs.org/dist, or a `node-android-build` Actions release) and dropped as a
@@ -20,7 +22,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST_DIR="$ROOT/node-android"
+DEST_DIR="$ROOT/native"
 
 # The extracted standalone Node tree to stage. Default to the newest
 # nodejs-v*-android-* tree at the repo root, or an explicit path argument.

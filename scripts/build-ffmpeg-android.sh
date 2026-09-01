@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 #
 # Cross-compiles FFmpeg (with libx264) + FFprobe for Android using the repo's
-# Android NDK, and installs the resulting executables into the app's jniLibs.
+# Android NDK, and stages the resulting executables into native/bin for the app.
 #
 # The app does NOT bundle prebuilt third-party binaries in the repo (see
 # scripts/fetch-node-android.sh for the same policy with the Node runtime).
 # Instead this script compiles two static, self-contained executables from
 # source:
-#   - ffmpeg   -> app/src/main/jniLibs/arm64-v8a/libffmpeg.so
-#   - ffprobe  -> app/src/main/jniLibs/arm64-v8a/libffprobe.so
+#   - ffmpeg   -> native/bin/arm64-v8a/libffmpeg.so
+#   - ffprobe  -> native/bin/arm64-v8a/libffprobe.so
 #
 # The server (stremio's server.js) invokes these via FFMPEG_BIN/FFPROBE_BIN.
-# They're shipped as .so-named jniLibs so AGP extracts them to nativeLibraryDir
-# with the exec bit at install time; exec() ignores the suffix. libx264 is
-# compiled in so the transcoding path can produce the H.264/AAC output the Roku
-# client needs. Static linking keeps the executables self-contained.
+# They're bundled native executables (not JNI/shared libraries): they are named
+# lib*.so so AGP packages them into the APK's lib/<abi>/ and extracts them (with
+# the exec bit) to nativeLibraryDir at install time, after which the app spawns
+# them as child processes — exec() ignores the .so suffix. libx264 is compiled in
+# so the transcoding path can produce the H.264/AAC output the Roku client needs.
+# Static linking keeps the executables self-contained.
 #
 # Why source-built instead of prebuilt: the widely-known prebuilt FFmpeg drops
 # either ffprobe (Khang-NT ships ffmpeg only) or libx264 (LGPL-only builds
@@ -26,7 +28,7 @@
 #   arch is one of: arm64 (default), arm, x86_64
 #
 # Prereqs: curl, tar, bzip2, xz, make, and the Android NDK at
-# build/toolchain/android-ndk-r26d (download it manually or via the NDK
+# build/toolchain/android-ndk-r29 (download it manually or via the NDK
 # instructions in the README), and for 32-bit ARM, perl (gas-preprocessor.pl).
 
 set -euo pipefail
@@ -76,9 +78,9 @@ NDK_TOOLCHAIN="$BUILD_DIR/android-ndk-$NDK_VERSION/toolchains/llvm/prebuilt/linu
 FFMPEG_SRC="$BUILD_DIR/ffmpeg-$FFMPEG_VERSION"
 X264_SRC="$BUILD_DIR/x264"
 WORK="$BUILD_DIR/ffmpeg-build/$ABI"
-JNI_LIBS_DIR="$ROOT/app/src/main/jniLibs/$ABI"
-OUT_FFMPEG="$JNI_LIBS_DIR/libffmpeg.so"
-OUT_FFPROBE="$JNI_LIBS_DIR/libffprobe.so"
+NATIVE_BIN_DIR="$ROOT/native/bin/$ABI"
+OUT_FFMPEG="$NATIVE_BIN_DIR/libffmpeg.so"
+OUT_FFPROBE="$NATIVE_BIN_DIR/libffprobe.so"
 
 NCPU="$(nproc 2>/dev/null || echo 4)"
 
@@ -90,10 +92,10 @@ SYSROOT="$NDK_TOOLCHAIN/sysroot"
 
 if [ ! -x "$CLANG" ]; then
   echo "ERROR: NDK clang not found: $CLANG" >&2
-  echo "       Get the NDK first and place it at build/toolchain/android-ndk-r26d." >&2
+  echo "       Get the NDK first and place it at build/toolchain/android-ndk-r29." >&2
   exit 1
 fi
-mkdir -p "$WORK" "$JNI_LIBS_DIR"
+mkdir -p "$WORK" "$NATIVE_BIN_DIR"
 
 log() { echo "==> $*"; }
 
@@ -200,14 +202,14 @@ mkdir -p "$WORK/ffmpeg"
   make -j"$NCPU"
   # Installs static libs + headers to $WORK/ffmpeg/lib and include, and the
   # ffmpeg/ffprobe executables to $WORK/ffmpeg/bin. We then copy the standalone
-  # executables into jniLibs so AGP extracts them to nativeLibraryDir at install
-  # time (see step 5 below).
+  # executables into native/bin so AGP extracts them to nativeLibraryDir at
+  # install time (see step 5 below).
   make install
 )
 
-# ---------- 5. Install to jniLibs (spawned via FFMPEG_BIN/FFPROBE_BIN) ----------
+# ---------- 5. Stage into native/bin (spawned via FFMPEG_BIN/FFPROBE_BIN) ----------
 log "Installing $OUT_FFMPEG and $OUT_FFPROBE"
-mkdir -p "$JNI_LIBS_DIR"
+mkdir -p "$NATIVE_BIN_DIR"
 cp "$FFMPEG_SRC/ffmpeg" "$OUT_FFMPEG" 2>/dev/null || cp "$FFMPEG_SRC/ffmpeg_g" "$OUT_FFMPEG" 2>/dev/null || true
 cp "$FFMPEG_SRC/ffprobe" "$OUT_FFPROBE" 2>/dev/null || true
 "$STRIP" "$OUT_FFMPEG" 2>/dev/null || true
@@ -215,6 +217,6 @@ cp "$FFMPEG_SRC/ffprobe" "$OUT_FFPROBE" 2>/dev/null || true
 chmod +x "$OUT_FFMPEG" "$OUT_FFPROBE" 2>/dev/null || true
 
 echo
-echo "==> Done ($ABI). Standalone executables staged as .so-named jniLibs at:"
-echo "    $JNI_LIBS_DIR"
+echo "==> Done ($ABI). Bundled native executables staged at:"
+echo "    $NATIVE_BIN_DIR"
 echo "Verify: $WORK/ffmpeg/bin/ffprobe -version"

@@ -31,9 +31,10 @@ with the nodejs version used.
   │     │  ├─ MainActivity.kt      Import / Run / Stop UI
   │     │  ├─ ServerService.kt     Foreground service, spawns Node, tee's logs
   │     │  └─ ServerLocator.kt     Locates binaries, writes preload + settings
-  │     ├─ jniLibs/arm64-v8a/      libffmpeg.so + libffprobe.so (built)
   │     └─ AndroidManifest.xml     FGS + dataSync + wake lock perms
-  ├─ node-android/bin/arm64-v8a/   libnode.so (standalone Node 26 executable)
+  ├─ native/
+  │  ├─ bin/arm64-v8a/             libffmpeg.so + libffprobe.so + libnode.so (built/staged)
+  │  └─ include/                   node headers (from fetch script)
   ├─ scripts/
   │  ├─ build-ffmpeg-android.sh    Cross-compile ffmpeg+ffprobe+libx264 for Android
   │  └─ fetch-node-android.sh      Stage the standalone Node executable
@@ -78,10 +79,15 @@ with the nodejs version used.
 
 ## How binaries get on-device
 
-The app ships all three executables as **`.so`-named jniLibs** so AGP reliably
+The app ships three **bundled native executables** (ffmpeg, ffprobe, node) — not
+JNI/shared libraries. All three are staged under `native/bin/<abi>/` as `lib*.so`
+so AGP packages them into the APK's `lib/<abi>/` and, with legacy packaging,
 extracts them to `nativeLibraryDir` with the **exec bit** at install time.
 `ProcessBuilder.exec()` ignores the `.so` suffix, so spawning works fine. Only
-**arm64-v8a** is packaged (`app/build.gradle` `abiFilters`).
+**arm64-v8a** is packaged (`app/build.gradle` `abiFilters`). The `jniLibs`
+source-set in `app/build.gradle` is pointed at `native/bin` purely to reuse
+AGP's jniLibs *packaging mechanism*; the files themselves are executed, never
+loaded.
 
 - `libffmpeg.so`, `libffprobe.so` — built by `scripts/build-ffmpeg-android.sh`
   (source build: FFmpeg 8.1.2 + libx264, static, self-contained; ffprobe is

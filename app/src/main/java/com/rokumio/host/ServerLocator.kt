@@ -9,23 +9,24 @@ import java.io.File
  * Locates and prepares the files the server needs at runtime.
  *
  * The APK bundles the runtime binaries (ffmpeg, ffprobe and the standalone Node
- * 26 executable) as jniLibs, and the user supplies server.js itself by picking a
- * file (it's proprietary, so it's never bundled). The Node executable — like
- * ffmpeg/ffprobe — is a standalone PIE binary that the server process spawns via
- * child_process.spawn; this class answers "where is everything?" and prepares the
- * writable data dir + preload env the server needs.
+ * 26 executable) as bundled native executables — packaged via AGP's jniLibs
+ * source-set mechanism and extracted to nativeLibraryDir at install — and the
+ * user supplies server.js itself by picking a file (it's proprietary, so it's
+ * never bundled). The Node executable — like ffmpeg/ffprobe — is a standalone
+ * PIE executable that the server process spawns via child_process.spawn; this
+ * class answers "where is everything?" and prepares the writable data dir +
+ * preload env the server needs.
  */
 class ServerLocator(private val context: Context) {
 
     private val filesDir: File = context.filesDir
 
-    /** Node, ffmpeg and ffprobe are shipped as .so-named jniLibs so AGP reliably
-     *  extracts them to nativeLibraryDir with the exec bit at install time.
-     *  exec() (via spawn) ignores the filename extension, so the .so suffix is
-     *  harmless. */
-    private val nativeDir: File = File(context.applicationInfo.nativeLibraryDir)
+    /** Where AGP extracted the bundled native executables at install time. They
+     *  are named lib*.so only so AGP packages/extracts them (with the exec bit)
+     *  here; they are spawned via exec(), which ignores the .so suffix. */
+    private val nativeLibDir: File = File(context.applicationInfo.nativeLibraryDir)
 
-    fun nodeBinary(): File = File(nativeDir, "libnode.so")
+    fun nodeBinary(): File = File(nativeLibDir, "libnode.so")
 
     fun filesDir(): File = filesDir
 
@@ -73,14 +74,14 @@ class ServerLocator(private val context: Context) {
      * /tmp on Android). Pointing APP_PATH (and HOME, which some paths read
      * directly) at our private filesDir fixes that.
      *
-     * ffmpeg and ffprobe are standalone executables under nativeLibraryDir
+     * ffmpeg and ffprobe are bundled native executables under nativeLibraryDir
      * (libffmpeg.so / libffprobe.so). Setting FFMPEG_BIN/FFPROBE_BIN makes the
      * server's child_process.spawn use them.
      */
     fun writePreload() {
         val dataDir = filesDir.absolutePath
-        val ffmpegBin = File(nativeDir, "libffmpeg.so").absolutePath
-        val ffprobeBin = File(nativeDir, "libffprobe.so").absolutePath
+        val ffmpegBin = File(nativeLibDir, "libffmpeg.so").absolutePath
+        val ffprobeBin = File(nativeLibDir, "libffprobe.so").absolutePath
         val preload = File(filesDir, "preload.js")
         val content = "process.env.APP_PATH = ${dataDir.jsonQuote()};\n" +
             "process.env.HOME = ${dataDir.jsonQuote()};\n" +

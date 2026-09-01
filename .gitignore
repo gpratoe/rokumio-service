@@ -11,9 +11,6 @@
 server*.js
 stremio-service/
 /build/toolchain/
-/node-android/
 /nodejs-v26.6.0-android-arm64/
-/app/src/main/jniLibs/arm64-v8a/libffmpeg.so
-/app/src/main/jniLibs/arm64-v8a/libffprobe.so
-/app/src/main/jniLibs/arm64-v8a/libnode.so
+/native/
 reference/

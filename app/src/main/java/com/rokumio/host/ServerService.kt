@@ -23,9 +23,10 @@ import java.io.InputStreamReader
  * serving with the screen off).
  *
  * The Node runtime is a self-contained standalone executable (Node 26) shipped
- * as a jniLib (libnode.so) and spawn()ed like ffmpeg/ffprobe. It runs its own
- * process, so this service just launches it, forwards its stdout/stderr to a
- * log file for debugging, and destroys the process when the service is stopped.
+ * as a bundled native executable (libnode.so, extracted to nativeLibraryDir at
+ * install) and spawn()ed like ffmpeg/ffprobe. It runs its own process, so this
+ * service just launches it, forwards its stdout/stderr to a log file for
+ * debugging, and destroys the process when the service is stopped.
  *
  * Shutdown semantics: because Node is a separate spawned process (not embedded
  * in ours), we can stop it cleanly by destroying the process. We do NOT attempt
