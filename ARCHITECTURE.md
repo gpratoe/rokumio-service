@@ -17,9 +17,10 @@ lets the Roku play torrent media with no desktop machine in the loop.
 
 ### Why not just use the stremio mobile app as a server?
 
-Stremio's mobile app server can't be accessed from devices in the same network. This
-behavior is something that i still don't fully know why happens but i know it has to do
-with the nodejs version used.
+You can, but i had had issues in the past doing it that way, mainly because it uses old versions
+of nodejs and ffmpeg. The other reason is to make a roku stremio client that connects to this server.
+Having a dedicated app for it i can semi-automate the process of connecting both ends in the future,
+wereas it would be more tedious if i was to use the stremio app.
 
 ## Components
 
