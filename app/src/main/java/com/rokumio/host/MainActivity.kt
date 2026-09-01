@@ -1,12 +1,19 @@
 package com.rokumio.host
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,16 +34,34 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<Button>(R.id.btn_import).setOnClickListener {
+        val btnImport = findViewById<Button>(R.id.btn_import)
+        val btnToggle = findViewById<Button>(R.id.btn_toggle)
+        val textSvState = findViewById<TextView>(R.id.text_svstate)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ServerService.running.collect { running ->
+                    btnToggle.text =
+                        if (running) "Stop server" else "Start server"
+                    textSvState.text =
+                        if (running) "RUNNING" else "STOPPED"
+                    if (running) textSvState.setTextColor(Color.GREEN) else textSvState.setTextColor(Color.RED)
+
+                }
+            }
+        }
+        btnImport.setOnClickListener {
             importPick.launch(arrayOf("*/*"))
         }
-        findViewById<Button>(R.id.btn_run).setOnClickListener {
-            startForegroundService(Intent(this, ServerService::class.java))
+        btnToggle.setOnClickListener {
+            if (ServerService.running.value) {
+                // Stopping the service destroys the spawned Node process, which shuts
+                // the server down completely.
+                stopService(Intent(this, ServerService::class.java))
+            } else {
+                startForegroundService(Intent(this, ServerService::class.java))
+            }
         }
-        // Stopping the service destroys the spawned Node process, which shuts
-        // the server down completely.
-        findViewById<Button>(R.id.btn_stop).setOnClickListener {
-            stopService(Intent(this, ServerService::class.java))
-        }
+
     }
+
 }

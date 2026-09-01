@@ -11,6 +11,8 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -35,6 +37,10 @@ import java.io.InputStreamReader
 class ServerService : Service() {
 
     private val channelId = "server"
+    companion object {
+        private val _running = MutableStateFlow(false)
+        val running = _running.asStateFlow()
+    }
     private val notifyId = 1
 
     private lateinit var locator: ServerLocator
@@ -68,10 +74,13 @@ class ServerService : Service() {
                 nodeProcess = spawnNode(nodeLog)
                 // Wait for the child to exit. When it does, the service has
                 // nothing left to do.
+                _running.value = true
                 nodeProcess?.waitFor()
+                _running.value = false
                 stopSelf()
             } catch (e: Exception) {
                 e.printStackTrace()
+                _running.value = false
                 stopSelf()
             }
         }.apply {

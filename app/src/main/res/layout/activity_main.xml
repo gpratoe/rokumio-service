@@ -2,27 +2,37 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:gravity="center"
+    android:orientation="vertical"
     android:padding="24dp">
 
+    <TextView
+        android:id="@+id/text_svstate"
+        android:layout_width="162dp"
+        android:layout_height="27dp"
+        android:fontFamily="sans-serif-smallcaps"
+        android:text="Stopped"
+        android:textAlignment="center"
+        android:textAllCaps="true"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        android:textColor="@color/design_default_color_error"
+        android:textStyle="bold"
+        android:typeface="normal"
+        android:visibility="visible" />
+
     <Button
-        android:id="@+id/btn_run"
-        android:layout_width="wrap_content"
+        android:id="@+id/btn_toggle"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="172dp"
         android:layout_height="wrap_content"
         android:text="Run server" />
 
     <Button
         android:id="@+id/btn_import"
+        style="@style/Widget.AppCompat.Button.Colored"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Import server.js" />
-
-    <Button
-        android:id="@+id/btn_stop"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Stop server" />
 
 </LinearLayout>
