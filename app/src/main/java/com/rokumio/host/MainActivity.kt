@@ -1,7 +1,6 @@
 package com.rokumio.host
 
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Button
@@ -46,7 +45,9 @@ class MainActivity : AppCompatActivity() {
                         if (running) "Stop server" else "Start server"
                     textSvState.text =
                         if (running) "RUNNING" else "STOPPED"
-                    if (running) textSvState.setTextColor(Color.GREEN) else textSvState.setTextColor(Color.RED)
+                    textSvState.setTextColor(
+                        if (running) getColor(R.color.running) else getColor(R.color.stopped)
+                    )
                 }
             }
         }

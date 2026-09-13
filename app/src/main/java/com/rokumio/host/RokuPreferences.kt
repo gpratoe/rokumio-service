@@ -24,12 +24,6 @@ class RokuPreferences(context: Context) {
         prefs.edit().putString(KEY_ADDONS, JSONArray(addons).toString()).apply()
     }
 
-    fun lastRokuIp(): String? = prefs.getString(KEY_ROKU, null)
-
-    fun saveLastRokuIp(ip: String?) {
-        prefs.edit().putString(KEY_ROKU, ip).apply()
-    }
-
     /** Dev-only override for the channel id used by the ECP launch fallback. */
     fun channelOverride(): String? = prefs.getString(KEY_CHANNEL_ID, null)
 
@@ -39,7 +33,6 @@ class RokuPreferences(context: Context) {
 
     private companion object {
         const val KEY_ADDONS = "addons"
-        const val KEY_ROKU = "last_roku_ip"
         const val KEY_CHANNEL_ID = "channel_id"
     }
 }

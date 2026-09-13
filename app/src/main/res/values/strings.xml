@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RokuMio Host</string>
-    <string name="addr_placeholder">—</string>
+    <string name="app_name">Rokumio service</string>
+    <string name="addr_placeholder">Not running</string>
     <string name="sv_status_placeholder">STOPPED</string>
+
+    <string name="app_title">Rokumio</string>
+    <string name="app_subtitle">Streaming server · Roku companion</string>
+    <string name="server_status_label">Server status</string>
+    <string name="address_label">Address</string>
 
     <string name="roku_activity_title">Roku companion</string>
     <string name="roku_open">Roku companion</string>
@@ -24,13 +29,16 @@
     <string name="addon_hint">https://host/manifest.json</string>
     <string name="addon_add">Add</string>
     <string name="addon_remove">Remove selected</string>
-    <string name="addon_removed">Removed add-on</string>
+    <string name="addon_removed">Removed add-ons</string>
+    <string name="addon_none_selected">Select add-ons to remove first.</string>
     <string name="addon_bad">Enter a full URL (https://…/manifest.json)</string>
+    <string name="addon_duplicate">Add-on already added.</string>
 
     <string name="send_header">Send to Rokumio</string>
-    <string name="send_button">Send to Roku</string>
+    <string name="send_button">Send</string>
     <string name="send_select">Select a Roku first.</string>
     <string name="send_sending">Sending…</string>
     <string name="server_not_running">Server not running — its address won’t be sent.</string>
     <string name="server_will_send">Server: %1$s</string>
+    <string name="addons_will_send">Addons: %2$s</string>
 </resources>

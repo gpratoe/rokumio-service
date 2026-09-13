@@ -64,7 +64,7 @@ object RokuDiscovery {
                 val location = header(text, "location")
                 val host = location?.let { uriHost(it) }
                 if (host != null && !found.containsKey(host)) {
-                    found[host] = RokuDevice(host, location)
+                    found[host] = RokuDevice(host, location, friendlyName(location))
                 }
             }
             return found.values.toList()
@@ -115,4 +115,29 @@ object RokuDiscovery {
     } catch (e: Exception) {
         null
     }
+
+    /** Fetch the ECP Device Description and return its `<friendlyName>`. */
+    private fun friendlyName(location: String?): String? {
+        if (location == null) return null
+        return try {
+            val conn = URI(location).toURL().openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 1500
+            conn.readTimeout = 1500
+            val body = if (conn.responseCode in 200..299) {
+                conn.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                conn.disconnect()
+                return null
+            }
+            conn.disconnect()
+            val match = NAME_PATTERN.find(body)
+            match?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private val NAME_PATTERN =
+        Regex("(?is)<friendlyName[^>]*>\\s*(.*?)\\s*</friendlyName>")
 }

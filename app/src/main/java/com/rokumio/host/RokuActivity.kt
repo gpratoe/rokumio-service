@@ -2,11 +2,9 @@ package com.rokumio.host
 
 import android.os.Bundle
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ListView
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
@@ -15,6 +13,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.checkbox.MaterialCheckBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,18 +30,22 @@ class RokuActivity : AppCompatActivity() {
     private val prefs by lazy { RokuPreferences(this) }
 
     private lateinit var rokuGroup: RadioGroup
-    private lateinit var addonsAdapter: ArrayAdapter<String>
+    private lateinit var addonsContainer: LinearLayout
     private lateinit var textServerAddr: TextView
     private lateinit var textSendStatus: TextView
 
     private val addons = mutableListOf<String>()
-    private var selectedAddonIndex = -1
+    private val selectedAddons = mutableSetOf<String>()
     private var selectedIp: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_roku)
-        setTitle(R.string.roku_activity_title)
+
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = getString(R.string.roku_activity_title)
 
         val btnScan = findViewById<Button>(R.id.btn_scan)
         val textRokuStatus = findViewById<TextView>(R.id.text_roku_status)
@@ -50,7 +54,7 @@ class RokuActivity : AppCompatActivity() {
         val inputAddon = findViewById<EditText>(R.id.input_addon)
         val btnAddAddon = findViewById<Button>(R.id.btn_add_addon)
         val btnRemoveAddon = findViewById<Button>(R.id.btn_remove_addon)
-        val listAddons = findViewById<ListView>(R.id.list_addons)
+        addonsContainer = findViewById(R.id.container_addons)
         val btnSend = findViewById<Button>(R.id.btn_send)
         rokuGroup = findViewById(R.id.roku_group)
 
@@ -72,25 +76,17 @@ class RokuActivity : AppCompatActivity() {
 
         // Restore persisted state.
         addons.clear()
-        addons.addAll(prefs.addons())
-        addonsAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, addons)
-        listAddons.adapter = addonsAdapter
-        prefs.lastRokuIp()?.let {
-            selectedIp = it
-            showSelectableRoku(it)
-        }
-
-        // The address that will be sent, live from the running server.
+        addons.addAll(prefs.addons().distinct())
         textServerAddr = findViewById(R.id.text_server_addr)
         textSendStatus = findViewById(R.id.text_send_status)
+        renderAddons()
+        updateSendInfo()
+
+        // The address that will be sent, live from the running server.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 ServerService.address.collect { address ->
-                    textServerAddr.text = if (address != null) {
-                        getString(R.string.server_will_send, address)
-                    } else {
-                        getString(R.string.server_not_running)
-                    }
+                    updateSendInfo()
                 }
             }
         }
@@ -107,7 +103,7 @@ class RokuActivity : AppCompatActivity() {
                     textRokuStatus.text = getString(R.string.roku_none)
                 } else {
                     textRokuStatus.text = getString(R.string.roku_found, devices.size)
-                    for (device in devices) showSelectableRoku(device.ip)
+                    for (device in devices) showSelectableRoku(device.ip, device.name)
                 }
             }
         }
@@ -116,7 +112,6 @@ class RokuActivity : AppCompatActivity() {
             val radio = findViewById<RadioButton>(checkedId)
             if (radio != null) {
                 selectedIp = radio.tag as? String
-                prefs.saveLastRokuIp(selectedIp)
             }
         }
 
@@ -125,7 +120,6 @@ class RokuActivity : AppCompatActivity() {
             if (ip.isEmpty()) return@setOnClickListener
             showSelectableRoku(ip)
             selectedIp = ip
-            prefs.saveLastRokuIp(ip)
         }
 
         btnAddAddon.setOnClickListener {
@@ -134,24 +128,28 @@ class RokuActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.addon_bad, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            if (addons.contains(url)) {
+                Toast.makeText(this, R.string.addon_duplicate, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             addons.add(url)
             prefs.saveAddons(addons)
-            addonsAdapter.notifyDataSetChanged()
+            renderAddons()
+            updateSendInfo()
             inputAddon.text.clear()
         }
 
-        listAddons.setOnItemClickListener { _, _, position, _ ->
-            selectedAddonIndex = position
-        }
-
         btnRemoveAddon.setOnClickListener {
-            if (selectedAddonIndex in addons.indices) {
-                addons.removeAt(selectedAddonIndex)
-                prefs.saveAddons(addons)
-                addonsAdapter.notifyDataSetChanged()
-                selectedAddonIndex = -1
-                Toast.makeText(this, R.string.addon_removed, Toast.LENGTH_SHORT).show()
+            if (selectedAddons.isEmpty()) {
+                Toast.makeText(this, R.string.addon_none_selected, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+            addons.removeAll(selectedAddons)
+            selectedAddons.clear()
+            prefs.saveAddons(addons)
+            renderAddons()
+            updateSendInfo()
+            Toast.makeText(this, R.string.addon_removed, Toast.LENGTH_SHORT).show()
         }
 
         btnSend.setOnClickListener {
@@ -185,7 +183,7 @@ class RokuActivity : AppCompatActivity() {
     }
 
     /** Add a radio for one Roku (dedupes by IP) and check it if it's already selected. */
-    private fun showSelectableRoku(ip: String) {
+    private fun showSelectableRoku(ip: String, name: String? = null) {
         for (i in 0 until rokuGroup.childCount) {
             val existing = rokuGroup.getChildAt(i)
             if (existing is RadioButton && existing.tag == ip) {
@@ -194,7 +192,7 @@ class RokuActivity : AppCompatActivity() {
             }
         }
         val radio = RadioButton(this)
-        radio.text = ip
+        radio.text = if (name.isNullOrBlank()) ip else "$name · $ip"
         radio.tag = ip
         radio.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -204,9 +202,46 @@ class RokuActivity : AppCompatActivity() {
         if (selectedIp == ip) radio.isChecked = true
     }
 
+    /** Rebuild the add-on rows so the container grows to fit every entry. */
+    private fun renderAddons() {
+        addonsContainer.removeAllViews()
+        for (url in addons) {
+            val row = MaterialCheckBox(this)
+            row.text = url
+            row.textSize = 16f
+            row.setTextColor(getColor(R.color.text_primary))
+            row.isChecked = url in selectedAddons
+            row.setOnCheckedChangeListener { _, checked ->
+                if (checked) selectedAddons.add(url) else selectedAddons.remove(url)
+            }
+            row.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            addonsContainer.addView(row)
+        }
+    }
+
     /** Loose sanity check; the channel re-validates each manifest on install anyway. */
     private fun isLikelyManifest(url: String): Boolean {
         val trimmed = url.trim()
         return trimmed.contains("://") && trimmed.contains("manifest.json")
+    }
+
+    /** Render the send-card summary: server address + number of add-ons queued. */
+    private fun updateSendInfo() {
+        val address = ServerService.address.value
+        val count = addons.size
+        val addonLine = getString(R.string.addons_will_send, "", count)
+        textServerAddr.text = if (address != null) {
+            getString(R.string.server_will_send, address) + "\n" + addonLine
+        } else {
+            getString(R.string.server_not_running) + "\n" + addonLine
+        }
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        onBackPressedDispatcher.onBackPressed()
+        return true
     }
 }
