@@ -69,5 +69,8 @@ class MainActivity : AppCompatActivity() {
                 startForegroundService(Intent(this, ServerService::class.java))
             }
         }
+        findViewById<Button>(R.id.btn_roku).setOnClickListener {
+            startActivity(Intent(this, RokuActivity::class.java))
+        }
     }
 }

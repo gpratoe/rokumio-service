@@ -14,13 +14,18 @@ android {
         versionCode 1
         versionName "0.1.0"
 
-        // The bundled native executables (ffmpeg, ffprobe via
-        // scripts/build-ffmpeg-android.sh, and the standalone Node executable
-        // via scripts/fetch-node-android.sh) are all staged for arm64-v8a only,
-        // under native/bin/arm64-v8a/. Packaging is therefore limited to arm64.
         ndk {
             abiFilters "arm64-v8a"
         }
+
+        // Dev builds (gradle -PdevMode=true) default the channel id to `dev`
+        // and expose the channel-id override field in the Roku companion UI;
+        // production builds lock it to the published app id (881630).
+        buildConfigField "boolean", "DEV_MODE", "${project.findProperty('devMode') ?: false}"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {

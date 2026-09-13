@@ -3,4 +3,34 @@
     <string name="app_name">RokuMio Host</string>
     <string name="addr_placeholder">—</string>
     <string name="sv_status_placeholder">STOPPED</string>
+
+    <string name="roku_activity_title">Roku companion</string>
+    <string name="roku_open">Roku companion</string>
+
+    <string name="roku_devices_header">Roku devices</string>
+    <string name="roku_scan">Scan for Rokus</string>
+    <string name="roku_scanning">Scanning…</string>
+    <string name="roku_found">%1$d Roku(s) found</string>
+    <string name="roku_none">No Rokus found — try again or enter the IP manually.</string>
+    <string name="manual_ip_hint">Roku IP (manual)</string>
+    <string name="manual_use">Use</string>
+
+    <string name="channel_id_header">Channel ID (dev only)</string>
+    <string name="channel_id_hint">dev</string>
+    <string name="channel_id_apply">Use</string>
+    <string name="channel_id_saved">Channel ID saved</string>
+
+    <string name="addons_header">Add-ons</string>
+    <string name="addon_hint">https://host/manifest.json</string>
+    <string name="addon_add">Add</string>
+    <string name="addon_remove">Remove selected</string>
+    <string name="addon_removed">Removed add-on</string>
+    <string name="addon_bad">Enter a full URL (https://…/manifest.json)</string>
+
+    <string name="send_header">Send to Rokumio</string>
+    <string name="send_button">Send to Roku</string>
+    <string name="send_select">Select a Roku first.</string>
+    <string name="send_sending">Sending…</string>
+    <string name="server_not_running">Server not running — its address won’t be sent.</string>
+    <string name="server_will_send">Server: %1$s</string>
 </resources>

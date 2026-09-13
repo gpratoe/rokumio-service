@@ -29,10 +29,16 @@ wereas it would be more tedious if i was to use the stremio app.
   ├─ app/                          Android app (Kotlin, com.rokumio.host)
   │  └─ src/main/
   │     ├─ java/com/rokumio/host/
-  │     │  ├─ MainActivity.kt      Import / Run / Stop UI
+  │     │  ├─ MainActivity.kt      Import / Run / Stop UI (+ Roku shortcut)
   │     │  ├─ ServerService.kt     Foreground service, spawns Node, tee's logs
-  │     │  └─ ServerLocator.kt     Locates binaries, writes preload + settings
-  │     └─ AndroidManifest.xml     FGS + dataSync + wake lock perms
+  │     │  ├─ ServerLocator.kt     Locates binaries, writes preload + settings
+  │     │  ├─ RokuActivity.kt      Companion screen: scan, addons, send
+  │     │  ├─ RokuDiscovery.kt     SSDP scan for Roku ECP devices
+  │     │  ├─ RokuEcp.kt           DIAL + ECP push to the channel
+  │     │  ├─ RokuPreferences.kt   Persists addons / last IP / channel override
+  │     │  └─ RokuDevice.kt        Discovered Roku model
+  │     ├─ res/layout/activity_roku.xml
+  │     └─ AndroidManifest.xml     FGS + dataSync + wake lock + RokuActivity perms
   ├─ native/
   │  ├─ bin/arm64-v8a/             libffmpeg.so + libffprobe.so + libnode.so (built/staged)
   │  └─ include/                   node headers (from fetch script)
@@ -118,3 +124,48 @@ that matter for Roku:
   advertised when `ffsplit` is present, which the `stremio-service` never bundles.
   This is a server-side behavior option; it is outside this app's scope to implement
   or ship.
+
+## Pushing to the Roku channel
+
+The companion (`RokuActivity`) discovers a Roku via SSDP (`RokuDiscovery`, ST
+`roku:ecp`, port 8060) or manual IP, collects add-on manifests + the running
+server's LAN address, then `RokuEcp.push()` delivers them to the Rokumio channel
+over three transports that share one contract:
+
+- **DIAL** `GET /dial/rokumio` — per-channel running/stopped probe that needs **no
+  developer mode** (the channel declares `dial_title=rokumio` in its manifest).
+  Only an explicit `<state>running</state>` reads as RUNNING; any other readable
+  state reads as STOPPED; a non-200 or parse failure reads as UNKNOWN.
+- **ECP** `POST /input?contentId=rokumio-import&rkio=<encoded>` — live delivery
+  to an already-running channel (no relaunch, no UI flap).
+- **ECP** `GET /query/active-app` — foreground-app status, the fallback when the
+  DIAL probe is unavailable (also needs no developer mode, but reports only the
+  FOREGROUND app — an absent id never counts as "running in background").
+- **ECP** `POST /launch/<channelId>?contentId=...&rkio=...` — cold start /
+  universal last resort (terminates a running instance, then imports against the
+  fresh scene).
+
+`push()` routes on the DIAL state: **running → `/input`**, **stopped → DIAL
+launch** (`POST /dial/rokumio`, body `contentId=rokumio-import&rkio=<encoded>`,
+which Roku passes to the channel's `Main(params)`). When the DIAL probe is
+**unreachable** it falls back to `query/active-app`: channel in front → `/input`,
+anything else → `/launch/<channelId>` cold start (using the channelId resolution
+below). A 2xx only means the OS accepted the request — the channel is the
+authority on the outcome.
+
+The `rkio` value is the URL-encoded [Strict-JSON] payload:
+
+```json
+{ "schema": 1, "addons": ["https://..."], "settings": { "serverAddress": "http://ip:11470" } }
+```
+
+### Channel-id resolution and the dev-mode flag
+
+`RokuEcp` uses the published beta id (`881630`) by default; DEV builds override
+it via a build flag. `app/build.gradle` defines `BuildConfig.DEV_MODE` from the
+`devMode` Gradle property (`gradle.properties` defaults it to `false`; override
+with `-PdevMode=true`). In DEV_MODE builds only, `RokuActivity` shows a channel-id
+override field (persisted via `RokuPreferences.channelOverride()`; falls back to
+`dev`, the sideloaded channel id) and otherwise always uses `881630`.
+
+[Strict-JSON]: https://tools.ietf.org/html/rfc8259
