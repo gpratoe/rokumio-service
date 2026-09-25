@@ -3,6 +3,7 @@ package com.rokumio.host
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -142,6 +143,19 @@ class ServerFragment : Fragment(), ScreenModule {
         btnToggle.text = getString(
             if (running) R.string.server_stop else R.string.server_start
         )
+        // Running = Stop; style the toggle red so it can't be mistaken for Start.
+        if (running) {
+            btnToggle.backgroundTintList =
+                ColorStateList.valueOf(requireContext().getColor(R.color.stopped))
+            btnToggle.setTextColor(requireContext().getColor(R.color.error_on))
+        } else {
+            btnToggle.backgroundTintList = ContextCompat.getColorStateList(
+                requireContext(), R.color.btn_hero_bg
+            )
+            btnToggle.setTextColor(
+                ContextCompat.getColorStateList(requireContext(), R.color.btn_hero_text)
+            )
+        }
         textSvState.text = getString(
             when {
                 running -> R.string.server_running
