@@ -1,10 +1,13 @@
 package com.rokumio.host
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.telephony.TelephonyManager
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
@@ -20,7 +23,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.navigation.NavigationView
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textConn: TextView
     private lateinit var dot: View
     private lateinit var chip: View
+    private lateinit var btnDonate: MaterialButton
 
     // One-time request on first launch (Android 13+); the FGS notification that
     // keeps the streaming server visible in the background requires this grant.
@@ -59,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         textConn = findViewById(R.id.text_roku_conn)
         dot = findViewById(R.id.dot)
         chip = findViewById(R.id.roku_chip)
+        btnDonate = findViewById(R.id.btn_donate)
 
         setSupportActionBar(toolbar)
         toolbar.setNavigationIcon(R.drawable.ic_menu)
@@ -78,6 +86,7 @@ class MainActivity : AppCompatActivity() {
 
         chip.setOnClickListener { openConnectSheet() }
         btnSend.setOnClickListener { onSend() }
+        btnDonate.setOnClickListener { openDonation() }
 
         maybeRequestNotificationPermission()
 
@@ -142,6 +151,59 @@ class MainActivity : AppCompatActivity() {
     /** Slide up the modal connect panel over the current screen. */
     private fun openConnectSheet() {
         ConnectSheetFragment().show(supportFragmentManager, "connect")
+    }
+
+    /**
+     * Voluntary support link from the drawer footer. Mirrors the Roku client:
+     * a short "it's free & open source, a coffee helps" message first, then a
+     * Support button that hands off to the browser. Routing follows the client
+     * too: Argentina → Cafecito, everywhere else → Buy Me a Coffee.
+     */
+    private fun openDonation() {
+        drawer.closeDrawer(GravityCompat.START)
+        MaterialAlertDialogBuilder(this)
+            .setIcon(R.drawable.ic_coffee)
+            .setTitle(R.string.support_dialog_title)
+            .setMessage(R.string.support_dialog_message)
+            .setPositiveButton(R.string.support_dialog_confirm) { _, _ -> openDonationUrl() }
+            .setNegativeButton(R.string.support_dialog_dismiss, null)
+            .show()
+    }
+
+    private fun openDonationUrl() {
+        val url = if (isArgentina()) {
+            "https://cafecito.app/gpratoe"
+        } else {
+            "https://buymeacoffee.com/gpratoe_"
+        }
+        try {
+            startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_VIEW, Uri.parse(url)),
+                    getString(R.string.support_chooser_title)
+                )
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, R.string.support_open_failed, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * Region detection, layered like the Roku client's GetCountryCode().
+     * The user's locale can say one thing while their operator says another
+     * (e.g. an English locale device on an Argentine SIM), so we trust the
+     * mobile network first, then the SIM, then the locale — no permissions
+     * required for any of these.
+     */
+    private fun isArgentina(): Boolean {
+        val telephony = getSystemService(TELEPHONY_SERVICE) as? TelephonyManager
+        @Suppress("DEPRECATION")
+        val iso = listOf(
+            telephony?.networkCountryIso,
+            telephony?.simCountryIso,
+            Locale.getDefault().country
+        )
+        return iso.any { it != null && it.equals("AR", ignoreCase = true) }
     }
 
     /** Push only the active screen's changes to the connected Roku. */

@@ -68,6 +68,16 @@
     <string name="send_button">Send</string>
     <string name="send_select">Select a Roku first.</string>
 
+    <!-- Support (drawer footer) -->
+    <string name="support_label">Support</string>
+    <string name="support_cd">Support Rokumio — buy me a coffee</string>
+    <string name="support_dialog_title">Support Rokumio</string>
+    <string name="support_dialog_message">Rokumio is free and open source, and it always will be. If it has been useful to you, a small contribution helps keep it going — a coffee is more than enough!</string>
+    <string name="support_dialog_confirm">Support</string>
+    <string name="support_dialog_dismiss">Not now</string>
+    <string name="support_chooser_title">Open donation page</string>
+    <string name="support_open_failed">Couldn\'t open the donation page.</string>
+
     <!-- Server notification -->
     <string name="notif_title_starting">RokuMio server</string>
     <string name="notif_body_starting">Starting…</string>
