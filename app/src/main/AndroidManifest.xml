@@ -24,12 +24,13 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".RokuActivity" android:exported="false" />
+        
 
         <service
             android:name=".ServerService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="true" />
     </application>
 
 </manifest>

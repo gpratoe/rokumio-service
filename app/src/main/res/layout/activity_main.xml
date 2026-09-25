@@ -1,136 +1,100 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:paddingHorizontal="24dp"
-    android:paddingTop="40dp"
-    android:paddingBottom="24dp">
+    android:background="@color/bg">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="sans-serif"
-        android:letterSpacing="0.01"
-        android:text="@string/app_title"
-        android:textColor="@color/text_primary"
-        android:textSize="34sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/app_subtitle"
-        android:textColor="@color/text_secondary"
-        android:textSize="15sp" />
-
-    <Space
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-    <com.google.android.material.card.MaterialCardView
-        style="@style/Widget.RokuMio.Card"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardUseCompatPadding="false">
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            style="@style/Widget.Material3.Toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface_low"
+            android:theme="@style/ThemeOverlay.Material3.Dark"
+            app:subtitleTextColor="@color/text_secondary"
+            app:titleTextColor="@color/text_primary" />
 
+        <!-- Shared status + send bar: identical on every screen. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
+            android:background="@color/surface_low"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp">
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:id="@+id/roku_chip"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:minHeight="44dp"
+                android:orientation="horizontal"
+                android:padding="10dp">
+
+                <View
+                    android:id="@+id/dot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/dot"
+                    android:backgroundTint="@color/stopped" />
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/server_status_label"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/text_svstate"
+                    android:id="@+id/text_roku_conn"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/sv_status_placeholder"
-                    android:textAppearance="@style/TextAppearance.RokuMio.Status"
-                    android:textColor="@color/stopped" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginVertical="16dp"
-                android:background="@color/outline_soft" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/address_label"
+                    android:layout_marginStart="10dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:singleLine="true"
+                    android:text="@string/roku_conn_none"
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/text_addr"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/addr_placeholder"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp" />
             </LinearLayout>
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_send"
+                style="@style/Widget.RokuMio.Button.Bar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/send_button"
+                app:icon="@drawable/ic_send"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconTint="@color/on_primary_container" />
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_toggle"
-        style="@style/Widget.RokuMio.Button.Hero"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Start server" />
+        <FrameLayout
+            android:id="@+id/fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_import"
-        style="@style/Widget.RokuMio.Button.Outlined"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Import server.js"
-        app:icon="@drawable/ic_download"
-        app:iconGravity="textStart"
-        app:iconPadding="10dp"
-        app:iconTint="@color/primary" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_roku"
-        style="@style/Widget.RokuMio.Button.Tonal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/roku_open"
-        app:icon="@drawable/ic_tv"
-        app:iconGravity="textStart"
-        app:iconPadding="10dp"
-        app:iconTint="@color/on_primary_container" />
-
-    <Space
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="0.6" />
-</LinearLayout>
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@color/surface_low"
+        android:theme="@style/ThemeOverlay.Material3.Dark"
+        app:itemIconTint="@color/nav_item"
+        app:itemTextColor="@color/nav_item"
+        app:menu="@menu/drawer_nav" />
+</androidx.drawerlayout.widget.DrawerLayout>

@@ -57,13 +57,12 @@ object RokuEcp {
      */
     fun push(
         rokuIp: String,
-        addons: List<String>,
-        serverAddress: String?,
+        payload: SendPayload,
         channelId: String = DEFAULT_CHANNEL_ID
     ): Result = when (dialState(rokuIp)) {
-        DialState.RUNNING -> input(rokuIp, addons, serverAddress)
-        DialState.STOPPED -> dialLaunch(rokuIp, addons, serverAddress)
-        DialState.UNKNOWN -> fallback(rokuIp, addons, serverAddress, channelId)
+        DialState.RUNNING -> input(rokuIp, payload)
+        DialState.STOPPED -> dialLaunch(rokuIp, payload)
+        DialState.UNKNOWN -> fallback(rokuIp, payload, channelId)
     }
 
     /**
@@ -73,12 +72,11 @@ object RokuEcp {
      */
     private fun fallback(
         rokuIp: String,
-        addons: List<String>,
-        serverAddress: String?,
+        payload: SendPayload,
         channelId: String
     ): Result = when (activeAppState(rokuIp, channelId)) {
         ActiveAppState.RUNNING -> {
-            val r = input(rokuIp, addons, serverAddress)
+            val r = input(rokuIp, payload)
             Result(
                 r.ok,
                 r.code,
@@ -86,7 +84,7 @@ object RokuEcp {
             )
         }
         ActiveAppState.STOPPED -> {
-            val r = launch(rokuIp, addons, serverAddress, channelId)
+            val r = launch(rokuIp, payload, channelId)
             Result(
                 r.ok,
                 r.code,
@@ -94,7 +92,7 @@ object RokuEcp {
             )
         }
         ActiveAppState.UNKNOWN -> {
-            val r = launch(rokuIp, addons, serverAddress, channelId)
+            val r = launch(rokuIp, payload, channelId)
             Result(
                 r.ok,
                 r.code,
@@ -173,9 +171,9 @@ object RokuEcp {
      * body. Roku passes those name/value pairs to the channel's Main(params),
      * so the channel routes them through the same handle-deep-link path.
      */
-    fun dialLaunch(rokuIp: String, addons: List<String>, serverAddress: String?): Result {
+    fun dialLaunch(rokuIp: String, payload: SendPayload): Result {
         val url = "http://$rokuIp:$ECP_PORT/dial/$DIAL_APP_NAME"
-        val body = "contentId=$CONTENT_ID&rkio=${enc(payload(addons, serverAddress).toString())}"
+        val body = "contentId=$CONTENT_ID&rkio=${enc(payload(payload).toString())}"
         return try {
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
@@ -204,10 +202,9 @@ object RokuEcp {
      */
     fun launch(
         rokuIp: String,
-        addons: List<String>,
-        serverAddress: String?,
+        payload: SendPayload,
         channelId: String = DEFAULT_CHANNEL_ID
-    ): Result = post(rokuIp, "launch/$channelId", addons, serverAddress)
+    ): Result = post(rokuIp, "launch/$channelId", payload)
 
     /**
      * POST /input?contentId=rokumio-import&rkio=<encoded>.
@@ -216,17 +213,15 @@ object RokuEcp {
      */
     fun input(
         rokuIp: String,
-        addons: List<String>,
-        serverAddress: String?
-    ): Result = post(rokuIp, "input", addons, serverAddress)
+        payload: SendPayload
+    ): Result = post(rokuIp, "input", payload)
 
     private fun post(
         rokuIp: String,
         httpPath: String,
-        addons: List<String>,
-        serverAddress: String?
+        payload: SendPayload
     ): Result {
-        val url = "http://$rokuIp:$ECP_PORT/$httpPath?contentId=$CONTENT_ID&rkio=${enc(payload(addons, serverAddress).toString())}"
+        val url = "http://$rokuIp:$ECP_PORT/$httpPath?contentId=$CONTENT_ID&rkio=${enc(payload(payload).toString())}"
         return try {
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
@@ -248,15 +243,15 @@ object RokuEcp {
     }
 
     /** Build the strict-JSON payload for schema 1. Omitted fields stay absent. */
-    private fun payload(addons: List<String>, serverAddress: String?): JSONObject {
+    private fun payload(p: SendPayload): JSONObject {
         val json = JSONObject()
         json.put("schema", 1)
-        if (addons.isNotEmpty()) {
-            json.put("addons", JSONArray(addons))
+        if (!p.addons.isNullOrEmpty()) {
+            json.put("addons", JSONArray(p.addons))
         }
-        if (!serverAddress.isNullOrBlank()) {
+        if (!p.serverAddress.isNullOrBlank()) {
             val settings = JSONObject()
-            settings.put("serverAddress", serverAddress)
+            settings.put("serverAddress", p.serverAddress)
             json.put("settings", settings)
         }
         return json

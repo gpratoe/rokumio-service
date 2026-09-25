@@ -38,6 +38,9 @@ class ServerService : Service() {
 
     private val channelId = "server"
     companion object {
+        /** Notification "Stop" action; also used to tear down on task removal. */
+        const val ACTION_STOP = "com.rokumio.host.action.STOP_SERVER"
+
         private val _running = MutableStateFlow(false)
         val running = _running.asStateFlow()
         private val _address = MutableStateFlow<String?>(null)
@@ -49,6 +52,10 @@ class ServerService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var nodeProcess: Process? = null
 
+    /** Set once a shutdown is requested so the spawn thread doesn't keep going. */
+    @Volatile
+    private var stopping = false
+
     override fun onCreate() {
         super.onCreate()
         createChannel()
@@ -58,6 +65,12 @@ class ServerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Tapped the notification's Stop button: tear the server down. The
+        // service is already foreground, so don't re-enter the start path.
+        if (intent?.action == ACTION_STOP) {
+            shutdownServer()
+            return START_NOT_STICKY
+        }
         startForegroundCompat()
         // Starting Node (locating binaries, spawning, first-boot work) cannot
         // block the main thread.
@@ -73,9 +86,15 @@ class ServerService : Service() {
                 }
 
                 val nodeLog = File(locator.filesDir(), "node.log")
-                nodeProcess = spawnNode(nodeLog)
+                val proc = spawnNode(nodeLog)
+                if (stopping) {
+                    proc.destroy()
+                    return@Thread
+                }
+                nodeProcess = proc
                 _running.value = true
                 discoverAddress()
+                updateNotificationRunning()
                 // Wait for the child to exit. When it does, the service has
                 // nothing left to do.
                 nodeProcess?.waitFor()
@@ -92,6 +111,31 @@ class ServerService : Service() {
             name = "server-node"
         }.start()
         return START_STICKY
+    }
+
+    /**
+     * The user removed the app from the task switcher (closed it, not merely
+     * hid it). The server is tied to the app's lifetime, so shut it all down.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        shutdownServer()
+    }
+
+    /** Kill Node, drop the foreground notification, and stop the service. */
+    private fun shutdownServer() {
+        stopping = true
+        _running.value = false
+        _address.value = null
+        try {
+            nodeProcess?.destroy()
+            nodeProcess?.waitFor()
+        } catch (e: Exception) {
+            nodeProcess = null
+        }
+        nodeProcess = null
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     /**
@@ -146,25 +190,60 @@ class ServerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startForegroundCompat() {
-        val contentIntent = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification: Notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("RokuMio server")
-            .setContentText("Starting…")
-            .setSmallIcon(android.R.drawable.stat_sys_upload)
-            .setOngoing(true)
-            .setContentIntent(contentIntent)
-            .build()
         // dataSync type must match the manifest declaration. ServiceCompat
         // handles the API<29 case where the 3-arg startForeground doesn't exist.
         ServiceCompat.startForeground(
             this,
             notifyId,
-            notification,
+            notification(running = false, address = null),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
+    }
+
+    /** Refresh the notification once the server reports its address. */
+    private fun updateNotificationRunning() {
+        val address = _address.value ?: return
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(notifyId, notification(running = true, address = address))
+    }
+
+    /** The foreground notification: "starting" or "running + Stop action". */
+    private fun notification(running: Boolean, address: String?): Notification {
+        val builder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(contentIntent())
+        if (running && address != null) {
+            builder
+                .setContentTitle(getString(R.string.notif_title_running))
+                .setContentText(getString(R.string.notif_body_addr, address))
+                .addAction(
+                    R.drawable.ic_stop,
+                    getString(R.string.notif_stop),
+                    stopPendingIntent()
+                )
+        } else {
+            builder
+                .setContentTitle(getString(R.string.notif_title_starting))
+                .setContentText(getString(R.string.notif_body_starting))
+        }
+        return builder.build()
+    }
+
+    private fun contentIntent(): PendingIntent =
+        PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+
+    private fun stopPendingIntent(): PendingIntent {
+        val stop = Intent(this, ServerService::class.java).setAction(ACTION_STOP)
+        return PendingIntent.getService(
+            this, 0, stop,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 

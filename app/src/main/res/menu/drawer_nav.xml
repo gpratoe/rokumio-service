@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_server"
+        android:icon="@drawable/ic_tv"
+        android:title="@string/server_title" />
+    <item
+        android:id="@+id/nav_addons"
+        android:icon="@drawable/ic_extension"
+        android:title="@string/addons_title" />
+    <item
+        android:id="@+id/nav_connect"
+        android:icon="@drawable/ic_scan"
+        android:title="@string/connect_title" />
+    <item
+        android:id="@+id/nav_dev"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/dev_title" />
+</menu>
