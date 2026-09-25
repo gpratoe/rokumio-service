@@ -31,8 +31,16 @@ class RokuPreferences(context: Context) {
         prefs.edit().putString(KEY_CHANNEL_ID, id).apply()
     }
 
+    /** Whether the POST_NOTIFICATIONS permission prompt has been shown before. */
+    fun notifAsked(): Boolean = prefs.getBoolean(KEY_NOTIF_ASKED, false)
+
+    fun saveNotifAsked() {
+        prefs.edit().putBoolean(KEY_NOTIF_ASKED, true).apply()
+    }
+
     private companion object {
         const val KEY_ADDONS = "addons"
         const val KEY_CHANNEL_ID = "channel_id"
+        const val KEY_NOTIF_ASKED = "notif_asked"
     }
 }

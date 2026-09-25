@@ -1,12 +1,17 @@
 package com.rokumio.host
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -36,6 +41,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textConn: TextView
     private lateinit var dot: View
     private lateinit var chip: View
+
+    // One-time request on first launch (Android 13+); the FGS notification that
+    // keeps the streaming server visible in the background requires this grant.
+    private val requestNotif = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* outcome is visible in the OS dialog; no follow-up needed here */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +79,8 @@ class MainActivity : AppCompatActivity() {
         chip.setOnClickListener { navigateTo(R.id.nav_connect) }
         btnSend.setOnClickListener { onSend() }
 
+        maybeRequestNotificationPermission()
+
         // Default screen.
         navigateTo(R.id.nav_server)
 
@@ -77,6 +90,19 @@ class MainActivity : AppCompatActivity() {
                 RokuConnection.device.collect { device -> renderConnection(device) }
             }
         }
+    }
+
+    /** Ask for notification permission once, on first run (no-op below API 33). */
+    private fun maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33) return
+        if (ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) return
+        val prefs = RokuPreferences(this)
+        if (prefs.notifAsked()) return
+        prefs.saveNotifAsked()
+        requestNotif.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     /** Rebuild the chip: dot color + label. */

@@ -1,7 +1,10 @@
 package com.rokumio.host
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -46,6 +49,22 @@ class ServerFragment : Fragment(), ScreenModule {
         ).show()
     }
 
+    // Re-asks for notification permission if it was denied at first launch,
+    // since the running-server banner + its Stop action need the grant. Either
+    // way the server still starts.
+    private val requestNotifStart = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            Toast.makeText(
+                requireContext(),
+                R.string.server_notif_denied,
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        startServer()
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -65,13 +84,31 @@ class ServerFragment : Fragment(), ScreenModule {
                 // Stopping the service destroys the spawned Node process.
                 requireContext().stopService(Intent(requireContext(), ServerService::class.java))
             } else {
-                ContextCompat.startForegroundService(
-                    requireContext(),
-                    Intent(requireContext(), ServerService::class.java)
-                )
+                ensureNotificationPermissionOrStart()
             }
         }
         return view
+    }
+
+    /** If the foreground-service notification permission was never granted, ask
+     *  for it first; otherwise start the server right away. */
+    private fun ensureNotificationPermissionOrStart() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotifStart.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            startServer()
+        }
+    }
+
+    private fun startServer() {
+        ContextCompat.startForegroundService(
+            requireContext(),
+            Intent(requireContext(), ServerService::class.java)
+        )
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

@@ -22,6 +22,7 @@
     <string name="server_imported">server.js imported</string>
     <string name="server_import_failed">Failed to import server.js</string>
     <string name="server_import">Import server.js</string>
+    <string name="server_notif_denied">Notifications are off — the background server banner won\'t show. Enable them in Settings.</string>
     <string name="server_send_hint">The top-right Send button pushes this server’s address to Roku.</string>
     <string name="server_nothing_to_send">Server is not running — nothing to send.</string>
 
