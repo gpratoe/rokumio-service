@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        chip.setOnClickListener { navigateTo(R.id.nav_connect) }
+        chip.setOnClickListener { openConnectSheet() }
         btnSend.setOnClickListener { onSend() }
 
         maybeRequestNotificationPermission()
@@ -135,9 +135,13 @@ class MainActivity : AppCompatActivity() {
     private fun fragmentFor(itemId: Int): Fragment? = when (itemId) {
         R.id.nav_server -> ServerFragment()
         R.id.nav_addons -> AddonsFragment()
-        R.id.nav_connect -> ConnectFragment()
         R.id.nav_dev -> if (BuildConfig.DEV_MODE) DevFragment() else null
         else -> null
+    }
+
+    /** Slide up the modal connect panel over the current screen. */
+    private fun openConnectSheet() {
+        ConnectSheetFragment().show(supportFragmentManager, "connect")
     }
 
     /** Push only the active screen's changes to the connected Roku. */
@@ -147,7 +151,7 @@ class MainActivity : AppCompatActivity() {
         val device = RokuConnection.device.value
         if (device == null) {
             Toast.makeText(this, R.string.send_select, Toast.LENGTH_SHORT).show()
-            navigateTo(R.id.nav_connect)
+            openConnectSheet()
             return
         }
         val payload = module.pendingSend()

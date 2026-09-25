@@ -95,6 +95,18 @@
             android:layout_marginTop="24dp"
             android:text="@string/server_start" />
 
+        <TextView
+            android:id="@+id/warning_serverjs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:drawablePadding="6dp"
+            android:gravity="center_vertical"
+            android:text="@string/server_js_missing"
+            android:textColor="@color/stopped"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_import"
             style="@style/Widget.RokuMio.Button.Outlined"

@@ -51,8 +51,8 @@
 
     <!-- Buttons -->
     <style name="Widget.RokuMio.Button" parent="Widget.Material3.Button">
-        <item name="backgroundTint">@color/primary</item>
-        <item name="android:textColor">@color/on_primary</item>
+        <item name="backgroundTint">@color/btn_hero_bg</item>
+        <item name="android:textColor">@color/btn_hero_text</item>
         <item name="android:textStyle">bold</item>
         <item name="cornerRadius">24dp</item>
         <item name="android:minHeight">52dp</item>

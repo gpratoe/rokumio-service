@@ -10,23 +10,21 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Connect screen: discover Rokus on the LAN (or enter an IP manually) and pick
- * the device the channel will be pushed to. Selection lives in the shared
- * [RokuConnection] state, never persisted — a fresh launch starts disconnected.
+ * Connect panel: a modal bottom sheet that slides over the current screen to
+ * discover Rokus on the LAN (or enter an IP manually) and pick the device the
+ * channel will be pushed to. Selection lives in the shared [RokuConnection]
+ * state, never persisted — a fresh launch starts disconnected.
  */
-class ConnectFragment : Fragment(), ScreenModule {
-
-    override val titleRes: Int = R.string.connect_title
-    override val sendEnabled: Boolean = false
+class ConnectSheetFragment : BottomSheetDialogFragment() {
 
     private lateinit var rokuGroup: RadioGroup
     private lateinit var textCurrent: TextView
@@ -38,7 +36,7 @@ class ConnectFragment : Fragment(), ScreenModule {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
+    ): View? {
         val view = inflater.inflate(R.layout.fragment_connect, container, false)
         rokuGroup = view.findViewById(R.id.roku_group)
         textCurrent = view.findViewById(R.id.text_current)
@@ -82,7 +80,7 @@ class ConnectFragment : Fragment(), ScreenModule {
             RokuConnection.select(null)
         }
 
-        // Keep this screen's summary + disconnect affordance live.
+        // Keep this panel's summary + disconnect affordance live.
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 RokuConnection.device.collect { device ->
@@ -121,8 +119,4 @@ class ConnectFragment : Fragment(), ScreenModule {
 
     private fun RokuDevice.displayName(): String =
         if (name.isNullOrBlank()) ip else "$name · $ip"
-
-    override fun pendingSend(): SendPayload? = null
-
-    override fun nothingToSendMessage(): Int = 0
 }

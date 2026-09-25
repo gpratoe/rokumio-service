@@ -34,6 +34,8 @@ class ServerFragment : Fragment(), ScreenModule {
     private lateinit var btnToggle: Button
     private lateinit var textSvState: TextView
     private lateinit var textAddr: TextView
+    private lateinit var warningServerJs: TextView
+    private var hasServerJs = false
 
     // Lifts a persisted read grant so the file the user picked stays readable
     // across launches without needing a storage permission.
@@ -47,6 +49,10 @@ class ServerFragment : Fragment(), ScreenModule {
             if (ok) R.string.server_imported else R.string.server_import_failed,
             Toast.LENGTH_SHORT
         ).show()
+        if (ok) {
+            hasServerJs = locator.hasServerJs()
+            renderServerState(ServerService.running.value)
+        }
     }
 
     // Re-asks for notification permission if it was denied at first launch,
@@ -75,6 +81,7 @@ class ServerFragment : Fragment(), ScreenModule {
         btnToggle = view.findViewById(R.id.btn_toggle)
         textSvState = view.findViewById(R.id.text_svstate)
         textAddr = view.findViewById(R.id.text_addr)
+        warningServerJs = view.findViewById(R.id.warning_serverjs)
 
         view.findViewById<Button>(R.id.btn_import).setOnClickListener {
             importPick.launch(arrayOf("*/*"))
@@ -112,21 +119,10 @@ class ServerFragment : Fragment(), ScreenModule {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        hasServerJs = locator.hasServerJs()
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                ServerService.running.collect { running ->
-                    btnToggle.text = getString(
-                        if (running) R.string.server_stop else R.string.server_start
-                    )
-                    textSvState.text = getString(
-                        if (running) R.string.server_running else R.string.server_stopped
-                    )
-                    textSvState.setTextColor(
-                        requireContext().getColor(
-                            if (running) R.color.running else R.color.stopped
-                        )
-                    )
-                }
+                ServerService.running.collect { running -> renderServerState(running) }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -136,6 +132,30 @@ class ServerFragment : Fragment(), ScreenModule {
                 }
             }
         }
+    }
+
+    /** Toggle + status reflect running state and whether server.js exists. The
+     *  Start button is disabled (greyed) until server.js is imported; Stop stays
+     *  reachable while the server runs. */
+    private fun renderServerState(running: Boolean) {
+        btnToggle.isEnabled = running || hasServerJs
+        btnToggle.text = getString(
+            if (running) R.string.server_stop else R.string.server_start
+        )
+        textSvState.text = getString(
+            when {
+                running -> R.string.server_running
+                hasServerJs -> R.string.server_stopped
+                else -> R.string.server_no_serverjs
+            }
+        )
+        textSvState.setTextColor(
+            requireContext().getColor(
+                if (running) R.color.running else R.color.stopped
+            )
+        )
+        warningServerJs.visibility =
+            if (!running && !hasServerJs) View.VISIBLE else View.GONE
     }
 
     override fun pendingSend(): SendPayload? {
