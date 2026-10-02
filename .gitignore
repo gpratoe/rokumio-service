@@ -14,3 +14,5 @@ stremio-service/
 /nodejs-v26.6.0-android-arm64/
 /native/
 reference/
+*.jks
+*.keystore
