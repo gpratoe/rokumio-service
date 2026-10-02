@@ -16,3 +16,4 @@ stremio-service/
 reference/
 *.jks
 *.keystore
+/app/release
